@@ -1,6 +1,8 @@
 package org.maktab.photogallery.repository;
 
+import android.graphics.Bitmap;
 import android.util.Log;
+import android.util.LruCache;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -16,6 +18,7 @@ public class PhotoRepository {
 
     private static PhotoRepository sInstance;
     private List<GalleryItem> mItems = new ArrayList<>();
+    private LruCache<String, Bitmap> mPhotoCache;
 
     public static PhotoRepository getInstance() {
         if (sInstance == null)
@@ -45,7 +48,24 @@ public class PhotoRepository {
     }
 
     private PhotoRepository() {
+        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+        int cacheSize = maxMemory / 8;
+        mPhotoCache = new LruCache<String, Bitmap>(cacheSize) {
+            @Override
+            protected int sizeOf(String key, Bitmap value) {
+                return value.getByteCount() / 1024;
+            }
+        };
+    }
 
+    public Bitmap getBitmapFromPhotoCache(String key) {
+        return mPhotoCache.get(key);
+    }
+
+    public void addBitmapToMemoryCache(String key, Bitmap bitmap) {
+        if (getBitmapFromPhotoCache(key) == null) {
+            mPhotoCache.put(key, bitmap);
+        }
     }
 
     private List<GalleryItem> parseJson(JSONObject jsonBody) throws JSONException {

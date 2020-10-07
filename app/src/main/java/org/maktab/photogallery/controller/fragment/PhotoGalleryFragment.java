@@ -72,11 +72,20 @@ public class PhotoGalleryFragment extends Fragment {
 
         mThumbnailDownloader.setListener(
                 new ThumbnailDownloader.ThumbnailDownloaderListener<PhotoHolder>() {
-            @Override
-            public void onDownloadCompleted(PhotoHolder holder, Bitmap bitmap) {
-                holder.bindBitmap(bitmap);
-            }
-        });
+                    @Override
+                    public void onDownloadCompleted(PhotoHolder holder, Bitmap bitmap) {
+                        /**
+                         * handling if the bitmap is in cache
+                         *then binding or adding then binding
+                         */
+                        if (mRepository.getBitmapFromPhotoCache(holder.mItem.getId()) != null)
+                            holder.bindBitmap(mRepository.getBitmapFromPhotoCache(holder.mItem.getId()));
+                        else {
+                            mRepository.addBitmapToMemoryCache(holder.mItem.toString(), bitmap);
+                            holder.bindBitmap(mRepository.getBitmapFromPhotoCache(holder.mItem.getId()));
+                        }
+                    }
+                });
     }
 
     @Override

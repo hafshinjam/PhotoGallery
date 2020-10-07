@@ -10,6 +10,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import org.maktab.photogallery.network.FlickrFetcher;
+import org.maktab.photogallery.repository.PhotoRepository;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,6 +25,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
     private ConcurrentHashMap<T, String> mTargetUrl = new ConcurrentHashMap<>();
     private ThumbnailDownloaderListener mListener;
 
+
     public ThumbnailDownloaderListener getListener() {
         return mListener;
     }
@@ -34,7 +36,6 @@ public class ThumbnailDownloader<T> extends HandlerThread {
 
     public ThumbnailDownloader(Handler responseHandler) {
         super(TAG);
-
         mResponseHandler = responseHandler;
     }
 
@@ -51,27 +52,26 @@ public class ThumbnailDownloader<T> extends HandlerThread {
                 if (msg.what == MESSAGE_DOWNLOAD) {
                     final T target = (T) msg.obj;
                     final String photoUrl = mTargetUrl.get(target);
-
                     if (photoUrl == null)
                         return;
+                        try {
+                            byte[] photoBytes = new FlickrFetcher().getBytes(photoUrl);
+                            final Bitmap bitmap = BitmapFactory
+                                    .decodeByteArray(photoBytes, 0, photoBytes.length);
 
-                    try {
-                        byte[] photoBytes = new FlickrFetcher().getBytes(photoUrl);
-                        final Bitmap bitmap = BitmapFactory
-                                .decodeByteArray(photoBytes, 0, photoBytes.length);
+                            mResponseHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (mTargetUrl.get(target) != photoUrl)
+                                        return;
 
-                        mResponseHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (mTargetUrl.get(target) != photoUrl)
-                                    return;
+                                    mListener.onDownloadCompleted(target, bitmap);
+                                }
+                            });
+                        } catch (IOException e) {
+                            Log.e(TAG, e.getMessage(), e);
+                        }
 
-                                mListener.onDownloadCompleted(target, bitmap);
-                            }
-                        });
-                    } catch (IOException e) {
-                        Log.e(TAG, e.getMessage(), e);
-                    }
                 }
             }
         };
